@@ -2,7 +2,7 @@
 #include "kernel/stat.h"
 #include "kernel/fcntl.h"
 #include "user/user.h"
-
+//xv6提供的一些库函数，或许会用上
 char*
 strcpy(char *s, const char *t)
 {

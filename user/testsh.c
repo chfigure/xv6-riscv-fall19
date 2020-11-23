@@ -149,6 +149,10 @@ one(char *cmd, char *expect, int tight)
     }
     return 1; // pass
   }
+  /*fprintf(2,"your out:\n");
+  fprintf(2,out);  //让它打印出信息，查看哪里错了，这里是自己的shell输出的
+  fprintf(2,"\nexpected out:\n");
+  fprintf(2,expect);  //这里是期望结果*/
   return 0; // fail
 }
 

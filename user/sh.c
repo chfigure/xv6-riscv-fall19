@@ -193,7 +193,7 @@ fork1(void)
 // Constructors
 
 struct cmd*
-execcmd(void)
+execcmd(void) //exec函数，用于给一个进程换药，保留ID，但是里面的资源全换了
 {
   struct execcmd *cmd;
 
@@ -204,7 +204,7 @@ execcmd(void)
 }
 
 struct cmd*
-redircmd(struct cmd *subcmd, char *file, char *efile, int mode, int fd)
+redircmd(struct cmd *subcmd, char *file, char *efile, int mode, int fd) //重定向命令
 {
   struct redircmd *cmd;
 
@@ -372,7 +372,7 @@ parsepipe(char **ps, char *es)
 }
 
 struct cmd*
-parseredirs(struct cmd *cmd, char **ps, char *es)
+parseredirs(struct cmd *cmd, char **ps, char *es) //解析重定向命令
 {
   int tok;
   char *q, *eq;
