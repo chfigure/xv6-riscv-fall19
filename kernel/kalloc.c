@@ -9,7 +9,7 @@
 #include "riscv.h"
 #include "defs.h"
 
-/*  OS Lab3：内存分配器
+/*  OS Lab3-1：内存分配器
     1.让每个CPU核有独立的空闲块链表
     2.CPU优先拿自己的空闲块
     3.自己的块没有空闲的时候，拿别的CPU的
@@ -45,7 +45,7 @@ struct kmem
 }; //类型名字是struct kmem
 
 struct kmem kmems[NCPU];  //声明与CPU数量相同的空闲表，每个表都有锁
-char lock_name[8][6] = {"kmem0", "kmem1", "kmem2", "kmem3", "kmem4", "kmem5", "kmem6", "kmem7"};
+char kmem_lock_name[8][6] = {"kmem0", "kmem1", "kmem2", "kmem3", "kmem4", "kmem5", "kmem6", "kmem7"};
 //给锁起名字，C语言字符串处理比较麻烦，直接用常量的方式
 
 //自定义函数，用于查看当前cpu的id
@@ -63,7 +63,7 @@ kinit() //初始化锁
 {
     for(int i = 0; i < NCPU; i++)
     {
-        initlock(&kmems[i].lock, lock_name[i]);
+        initlock(&kmems[i].lock, kmem_lock_name[i]);
     }
     freerange(end, (void*)PHYSTOP);
 }
