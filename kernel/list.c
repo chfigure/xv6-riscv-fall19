@@ -37,7 +37,7 @@ lst_pop(struct list *lst) {
 }
 
 void
-lst_push(struct list *lst, void *p)
+lst_push(struct list *lst, void *p) //往链表的lst位置后加一项p
 {
   struct list *e = (struct list *) p;
   e->next = lst->next;

@@ -2,6 +2,12 @@
 // Support functions for system calls that involve file descriptors.
 //
 
+/*  OS_Lab4-1：修改file，突破打开文件数量限制
+  1.移除kernel/file.c第19行中file[NFILE]的声明
+  2.在filealloc中使用bd_malloc动态申请文件描述符
+  3.在fileclose中释放文件描述符
+  */
+
 #include "types.h"
 #include "riscv.h"
 #include "defs.h"
@@ -16,7 +22,7 @@
 struct devsw devsw[NDEV];
 struct {
   struct spinlock lock;
-  struct file file[NFILE];
+  //struct file ; //删去数组声明，突破静态文件限制
 } ftable;
 
 void
@@ -25,20 +31,32 @@ fileinit(void)
   initlock(&ftable.lock, "ftable");
 }
 
+void clear(char *array, int index) {  //清零某一位数据，从buddy复制来
+  char b = array[index/8];
+  char m = (1 << (index % 8));
+  array[index/8] = (b & ~m);
+}
+
 // Allocate a file structure.
 struct file*
-filealloc(void)
-{
+filealloc(void) //给文件分配内存，我们要修改它，让它动态申请
+{ //调用bd_malloc动态申请，申请之前请清零内存！
   struct file *f;
+  uint64 file_size = sizeof(*f);  //取文件的大小，注意加*，这样才能取出文件正确大小
+  f = bd_malloc(file_size); //分配文件指针; //一个文件指针
+  
+  /*for(int i = 0; i < file_size; i++)  //清空内存块，这里8行，只能清字节数
+    clear((char *)f, i);*/
 
   acquire(&ftable.lock);
-  for(f = ftable.file; f < ftable.file + NFILE; f++){
-    if(f->ref == 0){
+  //for(f = ftable.file; f < ftable.file + NFILE; f++){
+    if(f){  //文件未被使用过，这个条件应该改为指针是否为空的判断
+      memset(f, 0, file_size);  //直接用这个函数清零更好
       f->ref = 1;
       release(&ftable.lock);
       return f;
     }
-  }
+  //}
   release(&ftable.lock);
   return 0;
 }
@@ -57,29 +75,31 @@ filedup(struct file *f)
 
 // Close file f.  (Decrement ref count, close when reaches 0.)
 void
-fileclose(struct file *f)
+fileclose(struct file *f) //关闭文件
 {
-  struct file ff;
-
+  //struct file ff;
   acquire(&ftable.lock);
-  if(f->ref < 1)
+  if(f->ref < 1)  //文件引用数已经为0，已经关了，再关闭就出错了
     panic("fileclose");
-  if(--f->ref > 0){
+  if(--f->ref > 0){ //文件还在用
     release(&ftable.lock);
     return;
   }
-  ff = *f;
-  f->ref = 0;
-  f->type = FD_NONE;
+  bd_free(f);  //释放文件描述符号，这里一句话相当于下面所有设置都做完了……
+  //ff = *f;  //暂存了文件的数据，用于稍后的文件设置，更改之后由于不需要再设置了，ff变量可以删去
+  //f->ref = 0;
+  //f->type = FD_NONE;
+  
   release(&ftable.lock);
 
-  if(ff.type == FD_PIPE){
+  /*if(ff.type == FD_PIPE){ //管道文件的关闭
     pipeclose(ff.pipe, ff.writable);
-  } else if(ff.type == FD_INODE || ff.type == FD_DEVICE){
+  } 
+  else if(ff.type == FD_INODE || ff.type == FD_DEVICE){ //其他类型文件的关闭
     begin_op(ff.ip->dev);
     iput(ff.ip);
     end_op(ff.ip->dev);
-  }
+  }*/
 }
 
 // Get metadata about file f.

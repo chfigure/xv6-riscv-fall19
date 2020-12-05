@@ -1,5 +1,6 @@
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_DEVICE } type;
+  //文件类型含义：已关闭的文件，管道文件，INODE文件，设备文件
   int ref; // reference count
   char readable;
   char writable;
