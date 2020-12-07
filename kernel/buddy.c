@@ -251,6 +251,7 @@ bd_mark(void *start, void *stop)
   for (int k = 0; k < nsizes; k++) {
     bi = blk_index(k, start);
     bj = blk_index_next(k, stop);
+    printf("bi:%d, bj:%d\n",bi, bj);
     for(; bi < bj; bi++) {
       if(k > 0) {
         // if a block is allocated at size k, mark it as split too.
@@ -308,10 +309,11 @@ bd_initfree_pair(int k, int bi, void *left, void *right) {
 int
 bd_initfree(void *bd_left, void *bd_right) {
   int free = 0;
-
+  //printf("bd_left:%d, bd_right:%d\n",bd_left, bd_right);
   for (int k = 0; k < MAXSIZE; k++) {   // skip max size
     int left = blk_index_next(k, bd_left);
     int right = blk_index(k, bd_right);
+    //printf("left:%d, right:%d\n",left, right);
     free += bd_initfree_pair(k, left, bd_left, bd_right);
     if(right <= left)
       continue;
@@ -375,7 +377,7 @@ bd_init(void *base, void *end) {
     memset(bd_sizes[k].alloc, 0, sz);
     p += sz;
   }
-
+  //bd_sizes[MAXSIZE].alloc = p++;  //手动给最大层分配1空间
   // allocate the split array for each size k, except for k = 0, since
   // we will not split blocks of size k = 0, the smallest size.
   //初始化每一层的分裂链表，且第0层为空，我们就跳过了第0层
@@ -400,7 +402,7 @@ bd_init(void *base, void *end) {
   
   // initialize free lists for each size k
   int free = bd_initfree(p, bd_end);
-
+  //bd_print();
   // check if the amount that is free is what we expect
   if(free != BLK_SIZE(MAXSIZE)-meta-unavailable) {
     printf("free %d %d\n", free, BLK_SIZE(MAXSIZE)-meta-unavailable);
