@@ -22,7 +22,7 @@
 struct devsw devsw[NDEV];
 struct {
   struct spinlock lock;
-  //struct file ; //删去数组声明，突破静态文件限制
+  //struct file file[NFILE]; //删去数组声明，突破静态文件限制
 } ftable;
 
 void
@@ -43,12 +43,11 @@ filealloc(void) //给文件分配内存，我们要修改它，让它动态申�
 { //调用bd_malloc动态申请，申请之前请清零内存！
   struct file *f;
   uint64 file_size = sizeof(*f);  //取文件的大小，注意加*，这样才能取出文件正确大小
-  f = bd_malloc(file_size); //分配文件指针; //一个文件指针
-  
-  /*for(int i = 0; i < file_size; i++)  //清空内存块，这里8行，只能清字节数
+  /*for(int i = 0; i < file_size; i++)  //清空内存块，这里8行，只能清字节数量大小的比特
     clear((char *)f, i);*/
 
   acquire(&ftable.lock);
+  f = bd_malloc(file_size); //分配文件指针，应该先上锁再分配，保险
   //for(f = ftable.file; f < ftable.file + NFILE; f++){
     if(f){  //文件未被使用过，这个条件应该改为指针是否为空的判断
       memset(f, 0, file_size);  //直接用这个函数清零更好
@@ -74,10 +73,11 @@ filedup(struct file *f)
 }
 
 // Close file f.  (Decrement ref count, close when reaches 0.)
+//没搞清楚这个ff怎么简化，暂时先不简化了
 void
 fileclose(struct file *f) //关闭文件
 {
-  //struct file ff;
+  struct file ff;
   acquire(&ftable.lock);
   if(f->ref < 1)  //文件引用数已经为0，已经关了，再关闭就出错了
     panic("fileclose");
@@ -85,21 +85,20 @@ fileclose(struct file *f) //关闭文件
     release(&ftable.lock);
     return;
   }
-  bd_free(f);  //释放文件描述符号，这里一句话相当于下面所有设置都做完了……
-  //ff = *f;  //暂存了文件的数据，用于稍后的文件设置，更改之后由于不需要再设置了，ff变量可以删去
-  //f->ref = 0;
-  //f->type = FD_NONE;
-  
+  ff = *f;  //暂存了文件的数据，用于稍后的文件设置
+  f->ref = 0;
+  f->type = FD_NONE;
+  bd_free(f);  //释放文件描述符号
   release(&ftable.lock);
 
-  /*if(ff.type == FD_PIPE){ //管道文件的关闭
+  if(ff.type == FD_PIPE){ //管道文件的关闭
     pipeclose(ff.pipe, ff.writable);
   } 
   else if(ff.type == FD_INODE || ff.type == FD_DEVICE){ //其他类型文件的关闭
     begin_op(ff.ip->dev);
     iput(ff.ip);
     end_op(ff.ip->dev);
-  }*/
+  }
 }
 
 // Get metadata about file f.

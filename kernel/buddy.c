@@ -143,7 +143,7 @@ bd_malloc(uint64 nbytes)
   int fk, k;
 
   acquire(&lock);
-
+  //printf("malloc 1\n");
   // Find a free block >= nbytes, starting with smallest k possible
   fk = firstk(nbytes);  //能满足内存要求的最小的k值
   for (k = fk; k < nsizes; k++) { //一层层往大的找
@@ -154,13 +154,15 @@ bd_malloc(uint64 nbytes)
     release(&lock);
     return 0;
   }
-
+  //printf("malloc 2\n");
   // Found a block; pop it and potentially split it.
   char *p = lst_pop(&bd_sizes[k].free); //从链表里面拿一块空闲的内存出来
   //以下alloc的逻辑需要更改
   // bit_set(bd_sizes[k].alloc, blk_index(k, p));
   bit_xor(bd_sizes[k].alloc, blk_index(k, p));
+  //printf("malloc 3\n");
   for(; k > fk; k--) {
+    //printf("%d\n",k);
     // split a block at size k and mark one half allocated at size k-1
     // and put the buddy on the free list at size k-1
     char *q = p + BLK_SIZE(k-1);   // p's buddy
@@ -169,6 +171,7 @@ bd_malloc(uint64 nbytes)
     bit_xor(bd_sizes[k-1].alloc, blk_index(k-1, p));
     lst_push(&bd_sizes[k-1].free, q);
   }
+  //printf("malloc 4\n");
   release(&lock);
 
   return p;
@@ -194,6 +197,7 @@ bd_free(void *p) {
   int k;
 
   acquire(&lock);
+  //printf("free 1\n");
   for (k = size(p); k < MAXSIZE; k++) {
     int bi = blk_index(k, p);
     int buddy = (bi % 2 == 0) ? bi+1 : bi-1;
@@ -215,8 +219,11 @@ bd_free(void *p) {
     // anymore
     bit_clear(bd_sizes[k+1].split, blk_index(k+1, p));
   }
+  //printf("free 2\n");
   lst_push(&bd_sizes[k].free, p);
+  //printf("free 3\n");
   release(&lock);
+  //printf("free 4\n");
 }
 
 // Compute the first block at size k that doesn't contain p
@@ -251,7 +258,7 @@ bd_mark(void *start, void *stop)
   for (int k = 0; k < nsizes; k++) {
     bi = blk_index(k, start);
     bj = blk_index_next(k, stop);
-    printf("bi:%d, bj:%d\n",bi, bj);
+    //printf("bi:%d, bj:%d\n",bi, bj);
     for(; bi < bj; bi++) {
       if(k > 0) {
         // if a block is allocated at size k, mark it as split too.
@@ -373,11 +380,11 @@ bd_init(void *base, void *end) {
   for (int k = 0; k < nsizes; k++) {
     lst_init(&bd_sizes[k].free);
     sz = sizeof(char)* ROUNDUP(NBLK(k), 16) >> 4;//为了优化，我们给它的尺寸减半，原来除以8，现在除以16
+    //注意这里，里面的对齐也要向16对齐，否则在最后一层的时候，size变为0，就出错了
     bd_sizes[k].alloc = p;
     memset(bd_sizes[k].alloc, 0, sz);
     p += sz;
   }
-  //bd_sizes[MAXSIZE].alloc = p++;  //手动给最大层分配1空间
   // allocate the split array for each size k, except for k = 0, since
   // we will not split blocks of size k = 0, the smallest size.
   //初始化每一层的分裂链表，且第0层为空，我们就跳过了第0层
