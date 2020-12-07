@@ -168,7 +168,7 @@ bd_malloc(uint64 nbytes)
     char *q = p + BLK_SIZE(k-1);   // p's buddy
     bit_set(bd_sizes[k].split, blk_index(k, p));
     // bit_set(bd_sizes[k-1].alloc, blk_index(k-1, p));
-    bit_xor(bd_sizes[k-1].alloc, blk_index(k-1, p));
+    bit_xor(bd_sizes[k-1].alloc, blk_index(k-1, p));  //修改对应alloc值
     lst_push(&bd_sizes[k-1].free, q);
   }
   //printf("malloc 4\n");
@@ -258,24 +258,27 @@ bd_mark(void *start, void *stop)
   for (int k = 0; k < nsizes; k++) {
     bi = blk_index(k, start);
     bj = blk_index_next(k, stop);
+<<<<<<< HEAD
+=======
     //printf("bi:%d, bj:%d\n",bi, bj);
+>>>>>>> 24afe5d716ba9b2ec8dd08ace72ebd2991f10433
     for(; bi < bj; bi++) {
       if(k > 0) {
         // if a block is allocated at size k, mark it as split too.
-        //如果一块内存（非底层）已经被分配了，同时也把它标记为已分裂？为啥
+        //如果一块内存（非底层）已经被分配了，同时也把它标记为已分裂？为啥？
         bit_set(bd_sizes[k].split, bi);
       }
       // bit_set(bd_sizes[k].alloc, bi);
       bit_xor(bd_sizes[k].alloc, bi);
       //这样改为什么有用呢？第一块异或变为1之后，其buddy也来异或，就又变回去了
-      //还有一个好处：边界条件无需特别判定，直接异或操作即可
+      //还有一个好处：边界条件无需特别判定，直接异或操作即可（有效区之外的内存块都被分配了）
     }
   }
 } 
 
-// return 1 if addr is in range (left,right)
+//如果地址在有效的内存区间，返回真，否则返回假
 int addr_valid(void *addr, void *left, void *right, int memory_size){
-  return ( addr >= left ) &&( (addr + memory_size) < right);
+  return ( addr >= left ) &&( (addr + memory_size) < right);  //左侧、右侧都要判断好
 }
 
 // If a block is marked as allocated and the buddy is free, put the
@@ -290,9 +293,8 @@ bd_initfree_pair(int k, int bi, void *left, void *right) {
   // if(bit_isset(bd_sizes[k].alloc, bi) !=  bit_isset(bd_sizes[k].alloc, buddy)) {
   if(bit_xorset(bd_sizes[k].alloc, bi)){
     // one of the pair is free
-    free = BLK_SIZE(k);
-    // printf("bi (%p,%p,in range:%d)\tbuddy(%p,%p,in range:%d)\n",addr(k,bi),addr(k,bi)+free,addr_in_range(addr(k,bi),left,right,free),addr(k,buddy),addr(k,buddy)+free,addr_in_range(addr(k,buddy),left,right,free));
-    if( addr_valid(addr(k, bi), left, right, free) ){
+    free = BLK_SIZE(k); //块长
+    if( addr_valid(addr(k, bi), left, right, free) ){ //bi地址合理，加入空闲表，反之加入buddy
       lst_push(&bd_sizes[k].free, addr(k, bi)); 
     }else{
       lst_push(&bd_sizes[k].free, addr(k, buddy)); 
@@ -311,8 +313,8 @@ bd_initfree_pair(int k, int bi, void *left, void *right) {
 // are only two pairs that may have a buddy that should be on free list:
 // bd_left and bd_right.
 //初始化整层的空闲链表，返回初始化的容量
-//初始化过程，只有边界左侧、右侧的两个端点处的内存块可能出现在空闲列表中
-//az，啥意思（
+//初始化过程，只有边界左侧、右侧的两个端点处的内存块可能出现在空闲列表中，在initfree_pair中处理
+//az，啥意思没太懂（
 int
 bd_initfree(void *bd_left, void *bd_right) {
   int free = 0;
@@ -379,7 +381,11 @@ bd_init(void *base, void *end) {
   //初始化每一层的空闲链表
   for (int k = 0; k < nsizes; k++) {
     lst_init(&bd_sizes[k].free);
+<<<<<<< HEAD
+    sz = sizeof(char)* ROUNDUP(NBLK(k), 16) >> 4;//为了优化，给它的尺寸减半，原来除以8，现在除以16
+=======
     sz = sizeof(char)* ROUNDUP(NBLK(k), 16) >> 4;//为了优化，我们给它的尺寸减半，原来除以8，现在除以16
+>>>>>>> 24afe5d716ba9b2ec8dd08ace72ebd2991f10433
     //注意这里，里面的对齐也要向16对齐，否则在最后一层的时候，size变为0，就出错了
     bd_sizes[k].alloc = p;
     memset(bd_sizes[k].alloc, 0, sz);
